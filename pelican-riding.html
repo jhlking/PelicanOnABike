@@ -1,0 +1,990 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>鹈鹕骑车</title>
+<style>
+  :root { --bg: #f3efe6; --text: #3a3530; --border: rgba(0,0,0,.12); --btn: #ffffff; }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) { --bg: #1d1f24; --text: #e4e1da; --border: rgba(255,255,255,.16); --btn: #2a2d33; }
+  }
+  :root[data-theme="dark"] { --bg: #1d1f24; --text: #e4e1da; --border: rgba(255,255,255,.16); --btn: #2a2d33; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; padding: 24px 16px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
+    background: var(--bg); color: var(--text);
+    font-family: system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+  }
+  h1 { margin: 0; font-size: 1.35rem; font-weight: 600; }
+  .stage {
+    width: 100%; max-width: 920px; border-radius: 18px; overflow: hidden;
+    border: 1px solid var(--border); box-shadow: 0 10px 30px rgba(0,0,0,.12);
+  }
+  svg { display: block; width: 100%; height: auto; }
+  .controls { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; justify-content: center; }
+  button {
+    padding: 8px 20px; border-radius: 999px; border: 1px solid var(--border);
+    background: var(--btn); color: inherit; font-size: .95rem; cursor: pointer;
+  }
+  button:focus-visible, input:focus-visible { outline: 2px solid #e0413a; outline-offset: 2px; }
+  label { display: flex; align-items: center; gap: 8px; font-size: .9rem; }
+  input[type="range"] { width: 150px; accent-color: #e0413a; }
+
+  /* SVG 内部的 CSS 动画，时长随速度变量缩放 */
+  #scene { --spd: 1; }
+  #eye { transform-box: fill-box; transform-origin: center; animation: blink 4.5s infinite; }
+  @keyframes blink { 0%, 93%, 100% { transform: scaleY(1); } 95% { transform: scaleY(.1); } }
+  #wingTip { transform-box: fill-box; transform-origin: 100% 0%;
+    animation: flutter calc(.4s / var(--spd)) ease-in-out infinite alternate; }
+  @keyframes flutter { from { transform: rotate(-8deg); } to { transform: rotate(5deg); } }
+  #scarfTail { transform-box: fill-box; transform-origin: 100% 30%;
+    animation: wave calc(.3s / var(--spd)) ease-in-out infinite alternate; }
+  @keyframes wave { from { transform: rotate(-6deg) scaleX(.95); } to { transform: rotate(7deg) scaleX(1.05); } }
+  .speed line { animation: whoosh calc(.7s / var(--spd)) linear infinite; }
+  @keyframes whoosh { 0% { transform: translateX(40px); opacity: 0; } 30% { opacity: .9; } 100% { transform: translateX(-70px); opacity: 0; } }
+  #scene.paused *:not(#bell):not(.star) { animation-play-state: paused !important; }
+
+  /* 车铃、对话气泡、星星、飞鸟 */
+  #bell { cursor: pointer; transform-box: fill-box; transform-origin: 50% 100%; }
+  #bell:focus { outline: none; }
+  #bell:focus-visible circle.hit { stroke: #e0413a; stroke-width: 2; }
+  #bell.ring { animation: ring .09s ease-in-out 6 alternate; }
+  @keyframes ring { from { transform: rotate(-20deg); } to { transform: rotate(20deg); } }
+  #bubble { opacity: 0; transition: opacity .2s; pointer-events: none; }
+  #bubble.show { opacity: 1; }
+  .star { fill: #fffbe6; animation: twinkle 2.4s ease-in-out infinite alternate; }
+  @keyframes twinkle { from { opacity: .25; } to { opacity: 1; } }
+  .bird { transform-box: fill-box; transform-origin: center; animation: flap .32s ease-in-out infinite alternate; }
+  @keyframes flap { from { transform: scaleY(1); } to { transform: scaleY(-.5); } }
+  .odo { font-size: .9rem; font-variant-numeric: tabular-nums; min-width: 9.5em; text-align: center; }
+  .hint { margin: 0; font-size: .8rem; opacity: .7; }
+  #scene { touch-action: manipulation; -webkit-user-select: none; user-select: none; }
+  #pouch { transform-box: fill-box; transform-origin: 50% 0%; }
+  #pouch.gulp { animation: gulp .5s ease-out; }
+  @keyframes gulp { 0% { transform: scale(1); } 35% { transform: scale(1.08, 1.4); } 100% { transform: scale(1); } }
+  /* 海岸线：浪花拍岸、帆船摇晃、海面反光闪烁、灯塔闪烁 */
+  .surf { animation: surf 1.8s ease-in-out infinite alternate; }
+  @keyframes surf { from { transform: translateY(0); opacity: .95; } to { transform: translateY(-6px); opacity: .35; } }
+  .boat { transform-box: fill-box; transform-origin: 50% 100%; animation: bob 2.4s ease-in-out infinite alternate; }
+  @keyframes bob { from { transform: rotate(-3deg) translateY(0); } to { transform: rotate(3deg) translateY(2px); } }
+  #glint ellipse { animation: shimmer 1.3s ease-in-out infinite alternate; }
+  #glint ellipse:nth-child(2n) { animation-delay: -.6s; }
+  #glint ellipse:nth-child(3n) { animation-delay: -1s; }
+  @keyframes shimmer { from { opacity: .25; } to { opacity: .9; } }
+  .lampGlow { transform-box: fill-box; transform-origin: center; animation: lamp 2s ease-in-out infinite; }
+  @keyframes lamp { 0%, 100% { transform: scale(.5); opacity: .4; } 50% { transform: scale(1.3); opacity: 1; } }
+  .chips { display: flex; gap: 18px; flex-wrap: wrap; justify-content: center; }
+  kbd { padding: 1px 6px; border: 1px solid var(--border); border-radius: 4px; font-family: inherit; font-size: .75rem; }
+</style>
+</head>
+<body>
+<h1>鹈鹕骑自行车</h1>
+
+<div class="stage">
+<svg id="scene" viewBox="0 0 900 560" role="img" aria-labelledby="t d">
+  <title id="t">鹈鹕骑自行车</title>
+  <desc id="d">一只戴头盔、围红围巾的白色鹈鹕骑着蓝色自行车前进，后座篮子里装着一条鱼，背景是海岸线：远处的小岛和灯塔、有帆船的大海、沙滩、椰子树和遮阳伞，都随车向后移动。可以让鹈鹕跳起来用嘴接住空中的鱼，也可以切换昼夜和雨天。</desc>
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#8fd0f2"/><stop offset="1" stop-color="#fdf1d8"/>
+    </linearGradient>
+    <linearGradient id="bodyG" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#dde2e7"/>
+    </linearGradient>
+    <linearGradient id="pouchG" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffd98a"/><stop offset="1" stop-color="#f2a444"/>
+    </linearGradient>
+    <linearGradient id="nightG" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0b1633"/><stop offset="1" stop-color="#2d3d6b"/>
+    </linearGradient>
+    <!-- 夜间地面阴影：从地平线往下逐渐加深，避免出现硬边 -->
+    <linearGradient id="shadeG" gradientUnits="userSpaceOnUse" x1="0" y1="200" x2="0" y2="340">
+      <stop offset="0" stop-color="#0a1230" stop-opacity="0"/><stop offset="1" stop-color="#0a1230" stop-opacity="1"/>
+    </linearGradient>
+    <!-- 可收集的鱼，颜色由 <use fill> 继承 -->
+    <g id="fishT">
+      <path d="M-33 0 Q-10 -20 17 -6 L35 -18 L31 2 L37 18 L17 6 Q-7 18 -33 0 Z" stroke="#fff" stroke-width="2"/>
+      <path d="M-8 -9 Q-2 0 -8 9" stroke="#fff" stroke-width="2" fill="none" opacity=".7"/>
+      <circle cx="-21" cy="-3" r="2.8" fill="#1d1d1d"/>
+    </g>
+    <!-- 海水：远处深蓝，靠近沙滩变成浅青色 -->
+    <linearGradient id="seaG" gradientUnits="userSpaceOnUse" x1="0" y1="300" x2="0" y2="445">
+      <stop offset="0" stop-color="#3f93c2"/><stop offset=".65" stop-color="#4aa9cf"/><stop offset="1" stop-color="#7fd6d2"/>
+    </linearGradient>
+    <!-- 椰子树，原点在树根 -->
+    <g id="palm">
+      <path d="M0 0 Q-6 -60 14 -110" stroke="#9b6b3f" stroke-width="11" fill="none" stroke-linecap="round"/>
+      <path d="M0 0 Q-6 -60 14 -110" stroke="#7d5330" stroke-width="11" fill="none" stroke-dasharray="2 9"/>
+      <path d="M14 -110 Q-8 -112 -26 -76 Q-6 -104 14 -104 Z" fill="#3f8a47"/>
+      <path d="M14 -110 Q40 -112 52 -72 Q34 -102 14 -104 Z" fill="#3f8a47"/>
+      <path d="M14 -110 Q-18 -130 -50 -98 Q-16 -114 14 -104 Z" fill="#4f9e4a"/>
+      <path d="M14 -110 Q48 -132 78 -96 Q44 -116 14 -104 Z" fill="#4f9e4a"/>
+      <path d="M14 -110 Q-4 -146 -30 -140 Q0 -136 14 -108 Z" fill="#58a64f"/>
+      <path d="M14 -110 Q36 -150 62 -138 Q32 -136 14 -108 Z" fill="#58a64f"/>
+      <circle cx="9" cy="-104" r="5" fill="#6b4a2b"/><circle cx="19" cy="-103" r="5" fill="#5a3d22"/>
+    </g>
+    <linearGradient id="beamG" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#fff4b8" stop-opacity=".7"/><stop offset="1" stop-color="#fff4b8" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+
+  <!-- 天空与太阳 -->
+  <rect width="900" height="560" fill="url(#sky)"/>
+  <rect id="nightSky" width="900" height="560" fill="url(#nightG)" opacity="0"/>
+  <g id="stars" opacity="0"></g>
+  <g id="sun">
+    <circle cx="740" cy="95" r="70" fill="#ffe89a" opacity=".35"/>
+    <circle cx="740" cy="95" r="46" fill="#ffd65a"/>
+  </g>
+  <g id="moon" opacity="0">
+    <circle cx="740" cy="95" r="62" fill="#f4f0d6" opacity=".12"/>
+    <circle cx="740" cy="95" r="36" fill="#f1edd4"/>
+    <circle cx="728" cy="86" r="7" fill="#dcd6b8"/><circle cx="752" cy="104" r="5" fill="#dcd6b8"/><circle cx="745" cy="80" r="3" fill="#dcd6b8"/>
+  </g>
+
+  <!-- 云（最慢视差层） -->
+  <g id="lClouds" fill="#fff" opacity=".9">
+    <g id="tClouds">
+      <ellipse cx="130" cy="90" rx="52" ry="20"/><ellipse cx="160" cy="76" rx="34" ry="22"/><ellipse cx="105" cy="80" rx="26" ry="16"/>
+      <ellipse cx="480" cy="60" rx="44" ry="16"/><ellipse cx="505" cy="49" rx="28" ry="18"/>
+      <ellipse cx="760" cy="170" rx="40" ry="14"/><ellipse cx="780" cy="160" rx="24" ry="14"/>
+    </g>
+    <use href="#tClouds" x="900"/>
+  </g>
+
+  <!-- 雨云（下雨时显现） -->
+  <g id="lStorm" opacity="0" fill="#7b8592">
+    <g id="tStorm">
+      <rect x="0" y="-10" width="900" height="40"/>
+      <ellipse cx="110" cy="30" rx="105" ry="38"/><ellipse cx="290" cy="42" rx="120" ry="42"/>
+      <ellipse cx="480" cy="28" rx="100" ry="36"/><ellipse cx="660" cy="44" rx="115" ry="40"/>
+      <ellipse cx="820" cy="30" rx="78" ry="34"/>
+    </g>
+    <use href="#tStorm" x="900"/>
+  </g>
+  <path id="bolt" fill="none" stroke="#fffbe0" stroke-width="3.5" stroke-linejoin="round" opacity="0"/>
+
+  <!-- 飞鸟 -->
+  <g fill="none" stroke="#3a3f45" stroke-width="2.5" stroke-linecap="round">
+    <g class="birdPos"><path class="bird" d="M-12 0 Q-6 -7 0 0 Q6 -7 12 0"/></g>
+    <g class="birdPos"><path class="bird" d="M-12 0 Q-6 -7 0 0 Q6 -7 12 0" style="animation-delay:-.12s"/></g>
+    <g class="birdPos"><path class="bird" d="M-12 0 Q-6 -7 0 0 Q6 -7 12 0" style="animation-delay:-.22s"/></g>
+  </g>
+
+  <!-- 远处的小岛与灯塔（最远的地面层） -->
+  <g id="lFar">
+    <g id="tFar">
+      <path fill="#8fb3c8" d="M50 301 Q105 258 170 268 Q225 278 262 301 Z"/>
+      <path fill="#9dbfd2" d="M510 301 Q555 274 600 279 Q640 284 668 301 Z"/>
+      <path fill="#a8c7d8" d="M715 301 Q742 287 772 301 Z"/>
+      <!-- 灯塔 -->
+      <path d="M145 272 L148 226 H158 L161 272 Z" fill="#f4f1ea"/>
+      <path d="M146.5 254 H159.5 L160 262 H146 Z M147.6 236 H158.4 L158.8 244 H147.2 Z" fill="#e0413a"/>
+      <rect x="146" y="216" width="14" height="10" rx="1" fill="#fff3a8" stroke="#5a5f65" stroke-width="1.5"/>
+      <path d="M144 216 L153 206 L162 216 Z" fill="#b02d27"/>
+      <g id="lamp" opacity="0"><circle class="lampGlow" cx="153" cy="221" r="16" fill="#fff4b8"/></g>
+    </g>
+    <use href="#tFar" x="900"/>
+  </g>
+
+  <!-- 大海 -->
+  <rect y="300" width="900" height="205" fill="url(#seaG)"/>
+  <rect y="299" width="900" height="2" fill="#c4e8f4" opacity=".8"/>
+  <!-- 太阳 / 月亮在海面的倒影 -->
+  <g id="glint" fill="#fff6c8">
+    <ellipse cx="740" cy="306" rx="26" ry="1.6"/><ellipse cx="736" cy="316" rx="34" ry="2"/>
+    <ellipse cx="744" cy="329" rx="40" ry="2.4"/><ellipse cx="738" cy="344" rx="30" ry="2.4"/>
+    <ellipse cx="746" cy="360" rx="22" ry="2.4"/>
+  </g>
+
+  <!-- 海浪与帆船 -->
+  <g id="lWaves">
+    <g id="tWaves">
+      <g class="boat">
+        <line x1="420" y1="356" x2="420" y2="300" stroke="#5a4a3c" stroke-width="2.5"/>
+        <path d="M423 350 V303 L448 348 Z" fill="#ffffff"/>
+        <path d="M417 348 V312 L399 348 Z" fill="#f28c6b"/>
+        <path d="M394 354 H450 L440 367 H404 Z" fill="#7a5c45"/>
+      </g>
+      <g id="waveMarks" fill="none" stroke="#e8f6fb" stroke-linecap="round" opacity=".7"></g>
+    </g>
+    <use href="#tWaves" x="900"/>
+  </g>
+
+  <!-- 沙滩（波浪形海岸线，周期 300 保证无缝） -->
+  <g id="lBeach">
+    <g id="tBeach">
+      <path fill="#ecd6a4" d="M0 440 Q75 428 150 440 T300 440 T450 440 T600 440 T750 440 T900 440 V505 H0 Z"/>
+      <path id="shore" d="M0 440 Q75 428 150 440 T300 440 T450 440 T600 440 T750 440 T900 440" fill="none"/>
+      <use href="#shore" y="6" stroke="#d8bd86" stroke-width="7"/>
+      <use class="surf" href="#shore" stroke="#ffffff" stroke-width="4" stroke-linecap="round" opacity=".9"/>
+      <!-- 海星和贝壳 -->
+      <polygon transform="translate(205 474) rotate(15)" fill="#f28c6b"
+               points="0,-8 2,-3 7.5,-2.5 3.5,1 5,7 0,4 -5,7 -3.5,1 -7.5,-2.5 -2,-3"/>
+      <polygon transform="translate(640 486) rotate(-20)" fill="#e9a23b"
+               points="0,-8 2,-3 7.5,-2.5 3.5,1 5,7 0,4 -5,7 -3.5,1 -7.5,-2.5 -2,-3"/>
+      <ellipse cx="420" cy="468" rx="5" ry="3.5" fill="#f7efe0" stroke="#d2b98d"/>
+      <ellipse cx="820" cy="478" rx="4" ry="3" fill="#f7efe0" stroke="#d2b98d"/>
+      <ellipse cx="90" cy="490" rx="6" ry="2.5" fill="#cdb488"/>
+    </g>
+    <use href="#tBeach" x="900"/>
+  </g>
+
+  <!-- 椰树、遮阳伞、冲浪板 -->
+  <g id="lTrees">
+    <g id="tTrees">
+      <use href="#palm" transform="translate(90 482)"/>
+      <g transform="translate(320 484)">
+        <path d="M-52 0 L-12 0 L-4 -8 L-44 -8 Z" fill="#5fc2a6"/>
+        <line x1="0" y1="0" x2="0" y2="-72" stroke="#7a7f85" stroke-width="3" stroke-linecap="round"/>
+        <path d="M-48 -62 Q0 -104 48 -62 Z" fill="#e0413a"/>
+        <path d="M0 -83 L-18 -62 H18 Z" fill="#ffffff"/>
+        <circle cy="-85" r="3" fill="#7a7f85"/>
+      </g>
+      <use href="#palm" transform="translate(560 484) scale(.85)"/>
+      <g transform="translate(770 486) rotate(12)">
+        <ellipse cy="-36" rx="10" ry="40" fill="#f5c542"/>
+        <line x1="0" y1="-74" x2="0" y2="2" stroke="#e0413a" stroke-width="2.5"/>
+      </g>
+    </g>
+    <use href="#tTrees" x="900"/>
+  </g>
+
+  <!-- 路面 -->
+  <rect y="500" width="900" height="60" fill="#5f646b"/>
+  <rect y="498" width="900" height="5" fill="#8a8f96"/>
+  <rect id="wet" y="503" width="900" height="57" fill="#a9bdd1" opacity="0"/>
+  <g id="lRoad" fill="#f3f3f0">
+    <g id="tRoad">
+      <rect x="0" y="528" width="50" height="6" rx="3"/><rect x="150" y="528" width="50" height="6" rx="3"/>
+      <rect x="300" y="528" width="50" height="6" rx="3"/><rect x="450" y="528" width="50" height="6" rx="3"/>
+      <rect x="600" y="528" width="50" height="6" rx="3"/><rect x="750" y="528" width="50" height="6" rx="3"/>
+    </g>
+    <use href="#tRoad" x="900"/>
+  </g>
+
+  <!-- 路上的小石头（车轮压过会颠一下） -->
+  <g id="rock" transform="translate(1100 0)">
+    <path d="M-15 503 Q-14 491 -2 489 Q12 489 15 503 Z" fill="#8b9097"/>
+    <path d="M-8 494 Q-2 490 5 492" stroke="#b3b8be" stroke-width="2" fill="none" stroke-linecap="round"/>
+  </g>
+
+  <!-- 影子 -->
+  <ellipse id="shadow" cx="440" cy="505" rx="240" ry="7" fill="#000" opacity=".22"/>
+
+  <!-- 后轮扬起的尘土 -->
+  <g id="dust" fill="#cbbb9f"></g>
+
+  <!-- 速度线 -->
+  <g class="speed" stroke="#ffffff" stroke-width="4" stroke-linecap="round" opacity=".8">
+    <line x1="150" y1="250" x2="200" y2="250"/>
+    <line x1="120" y1="320" x2="185" y2="320" style="animation-delay:-.25s"/>
+    <line x1="140" y1="390" x2="180" y2="390" style="animation-delay:-.5s"/>
+  </g>
+
+  <!-- 夜间地面变暗 -->
+  <rect id="landShade" y="200" width="900" height="360" fill="url(#shadeG)" opacity="0"/>
+  <!-- 雨天整体变灰 -->
+  <rect id="rainShade" width="900" height="560" fill="#4a5563" opacity="0"/>
+
+  <!-- 空中的鱼（跳起来用嘴接） -->
+  <g id="treats"></g>
+
+  <!-- 车灯光束 -->
+  <g id="beam" opacity="0">
+    <polygon points="596,316 900,255 900,505 596,328" fill="url(#beamG)"/>
+    <circle cx="590" cy="322" r="16" fill="#fff3a8" opacity=".6"/>
+  </g>
+
+  <g id="riderWrap">
+  <g id="rider">
+    <!-- 远侧腿和曲柄（在车架后面） -->
+    <line id="farCrank" stroke="#4a4f55" stroke-width="7" stroke-linecap="round"/>
+    <polyline id="farLeg" fill="none" stroke="#d98a2b" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+    <path id="farFoot" fill="#d98a2b"/>
+
+    <!-- 车轮 -->
+    <g id="wheels">
+      <g>
+        <circle cx="300" cy="420" r="78" fill="none" stroke="#26282b" stroke-width="10"/>
+        <circle cx="300" cy="420" r="71" fill="none" stroke="#c4c9cf" stroke-width="3"/>
+        <g id="rearSpokes" stroke="#9aa1a8" stroke-width="1.4"></g>
+        <circle cx="300" cy="420" r="7" fill="#6d7278"/>
+      </g>
+      <g>
+        <circle cx="600" cy="420" r="78" fill="none" stroke="#26282b" stroke-width="10"/>
+        <circle cx="600" cy="420" r="71" fill="none" stroke="#c4c9cf" stroke-width="3"/>
+        <g id="frontSpokes" stroke="#9aa1a8" stroke-width="1.4"></g>
+        <circle cx="600" cy="420" r="7" fill="#6d7278"/>
+      </g>
+    </g>
+
+    <!-- 链条与飞轮 -->
+    <path id="chain" d="M440 410 L300 411 A9 9 0 0 0 300 429 L440 450"
+          fill="none" stroke="#474b50" stroke-width="3" stroke-dasharray="5 3"/>
+    <circle cx="300" cy="420" r="10" fill="none" stroke="#6d7278" stroke-width="3"/>
+
+    <!-- 后货架与篮子 -->
+    <g stroke="#8d949b" stroke-width="4" stroke-linecap="round" fill="none">
+      <line x1="300" y1="420" x2="285" y2="340"/>
+      <line x1="245" y1="340" x2="345" y2="340"/>
+      <line x1="345" y1="340" x2="412" y2="318"/>
+    </g>
+    <!-- 篮子里的鱼 -->
+    <g id="fish">
+      <path d="M262 312 Q285 292 312 306 L330 294 L326 314 L332 330 L312 318 Q288 330 262 312 Z" fill="#6fb3d9"/>
+      <circle cx="274" cy="309" r="2.5" fill="#1d1d1d"/>
+    </g>
+    <path d="M242 310 H348 L338 340 H252 Z" fill="#c98e4f"/>
+    <g stroke="#a86f35" stroke-width="2">
+      <line x1="245" y1="320" x2="345" y2="320"/><line x1="248" y1="330" x2="342" y2="330"/>
+      <line x1="270" y1="310" x2="272" y2="340"/><line x1="295" y1="310" x2="295" y2="340"/><line x1="320" y1="310" x2="318" y2="340"/>
+    </g>
+
+    <!-- 车架 -->
+    <g stroke="#2f7fd1" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <line x1="300" y1="420" x2="440" y2="430"/>
+      <line x1="300" y1="420" x2="414" y2="312"/>
+      <line x1="440" y1="430" x2="412" y2="305"/>
+      <line x1="414" y1="312" x2="566" y2="306"/>
+      <line x1="440" y1="430" x2="576" y2="345"/>
+      <line x1="564" y1="298" x2="578" y2="348"/>
+    </g>
+    <line x1="577" y1="345" x2="600" y2="420" stroke="#c4c9cf" stroke-width="7" stroke-linecap="round"/>
+    <!-- 车灯 -->
+    <rect x="580" y="316" width="16" height="12" rx="4" fill="#f5d547" stroke="#8d949b" stroke-width="2"/>
+    <!-- 座杆与车座 -->
+    <line x1="412" y1="305" x2="409" y2="290" stroke="#8d949b" stroke-width="6"/>
+    <path d="M380 288 Q405 278 440 286 Q436 296 410 296 Q388 296 380 288 Z" fill="#2b2b2b"/>
+    <!-- 车把 -->
+    <line x1="564" y1="298" x2="560" y2="276" stroke="#8d949b" stroke-width="6" stroke-linecap="round"/>
+    <path d="M560 276 Q548 270 536 282" stroke="#303236" stroke-width="7" fill="none" stroke-linecap="round"/>
+    <!-- 车铃（可点击） -->
+    <g id="bell" role="button" tabindex="0" aria-label="按车铃">
+      <circle class="hit" cx="562" cy="262" r="16" fill="transparent"/>
+      <path d="M552 270 Q552 254 562 252 Q572 254 572 270 Z" fill="#f2c94c" stroke="#b8902a" stroke-width="2"/>
+      <circle cx="562" cy="250" r="2.5" fill="#b8902a"/>
+      <path d="M556 262 Q557 258 560 256" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round" opacity=".8"/>
+    </g>
+
+    <!-- 牙盘 -->
+    <g id="chainring">
+      <circle cx="440" cy="430" r="21" fill="#d3d7db" stroke="#5a5f65" stroke-width="4" stroke-dasharray="3 2"/>
+      <path d="M440 413 V447 M423 430 H457" stroke="#8d949b" stroke-width="3"/>
+    </g>
+
+    <!-- 鹈鹕 -->
+    <g id="pelican">
+      <!-- 尾巴 -->
+      <path d="M345 245 L300 238 L312 254 L296 266 L352 270 Z" fill="#cdd4da"/>
+      <!-- 身体 -->
+      <ellipse cx="412" cy="248" rx="80" ry="48" fill="url(#bodyG)" transform="rotate(-14 412 248)"/>
+
+      <!-- 头和脖子（点头动画） -->
+      <g id="head">
+        <path d="M448 232 C470 200 462 172 492 148 L522 158 C496 176 506 208 478 244 Z" fill="#fbfbfb"/>
+        <path d="M456 226 C474 200 470 180 494 158" stroke="#e1e6ea" stroke-width="3" fill="none"/>
+        <circle cx="512" cy="136" r="27" fill="#ffffff"/>
+        <!-- 头盔 -->
+        <path d="M484 128 Q488 98 516 98 Q544 100 540 126 Z" fill="#e0413a"/>
+        <path d="M494 110 L500 104 M512 104 L514 100 M528 108 L532 104" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity=".7"/>
+        <path d="M486 128 H542" stroke="#b02d27" stroke-width="3" stroke-linecap="round"/>
+        <path d="M492 130 Q498 150 510 158" stroke="#555" stroke-width="1.5" fill="none"/>
+        <!-- 喉囊与喙 -->
+        <path id="pouch" d="M526 146 L676 170 Q652 206 598 212 Q548 214 524 160 Z" fill="url(#pouchG)"/>
+        <path d="M526 132 Q600 140 682 162 Q690 170 678 174 Q600 160 524 150 Z" fill="#f4a340"/>
+        <path d="M530 140 Q600 148 674 166" stroke="#d98a2b" stroke-width="2" fill="none"/>
+        <path d="M674 162 Q694 164 688 180 Q682 173 674 174 Z" fill="#e0761f"/>
+        <!-- 眼睛 -->
+        <g id="eye">
+          <circle cx="520" cy="130" r="7" fill="#fff" stroke="#f0c46a" stroke-width="2"/>
+          <circle cx="522" cy="130" r="3.5" fill="#1d1d1d"/>
+          <circle cx="523.5" cy="128.5" r="1.2" fill="#fff"/>
+        </g>
+      </g>
+
+      <!-- 围巾 -->
+      <path id="scarfTail" d="M458 214 Q420 200 380 212 Q390 222 376 232 Q420 226 460 230 Z" fill="#e0413a"/>
+      <path d="M446 216 Q470 206 494 214 L490 232 Q468 226 450 236 Z" fill="#f05a4f"/>
+
+      <!-- 翅膀伸向车把 -->
+      <g id="wingTip">
+        <path d="M352 236 L322 246 L336 252 L318 262 L340 264 L328 276 L362 266 Z" fill="#33383e"/>
+      </g>
+      <path d="M352 238 Q410 212 470 236 Q510 254 540 276 Q530 290 510 284 Q478 276 448 272 Q400 284 364 276 Q340 268 352 238 Z"
+            fill="#eef1f3" stroke="#c6ccd2" stroke-width="2"/>
+      <path d="M380 256 Q412 248 448 256 M392 268 Q420 262 452 266" stroke="#c6ccd2" stroke-width="2" fill="none"/>
+      <ellipse cx="538" cy="281" rx="10" ry="7" fill="#eef1f3" stroke="#c6ccd2" stroke-width="2"/>
+    </g>
+
+    <!-- 近侧腿和曲柄 -->
+    <polyline id="nearLeg" fill="none" stroke="#f4a340" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+    <path id="nearFoot" fill="#f4a340"/>
+    <line id="nearCrank" stroke="#6d7278" stroke-width="7" stroke-linecap="round"/>
+    <circle cx="440" cy="430" r="5" fill="#303236"/>
+  </g>
+  </g>
+
+  <!-- 雨滴、水花、闪电 -->
+  <g id="rain" stroke="#dce8f5" stroke-width="1.6" stroke-linecap="round" opacity="0"></g>
+  <g id="splashes" fill="none" stroke="#e6eef7" stroke-width="1.4"></g>
+  <text id="plusOne" font-size="26" font-weight="700" fill="#ff9a3c" stroke="#fff" stroke-width="1"
+        text-anchor="middle" opacity="0" font-family="system-ui, sans-serif">+1</text>
+  <rect id="flash" width="900" height="560" fill="#f4f7ff" opacity="0" pointer-events="none"/>
+
+  <!-- 对话气泡 -->
+  <g id="bubble" aria-hidden="true">
+    <path d="M590 40 H760 Q776 40 776 56 V84 Q776 100 760 100 H640 L612 118 L620 100 H590 Q574 100 574 84 V56 Q574 40 590 40 Z"
+          fill="#fff" stroke="#3a3530" stroke-width="2.5"/>
+    <text id="bubbleText" x="675" y="78" text-anchor="middle" font-size="22" font-weight="600" fill="#3a3530"
+          font-family="system-ui, 'PingFang SC', 'Microsoft YaHei', sans-serif">叮铃铃~</text>
+  </g>
+</svg>
+</div>
+
+<div class="controls">
+  <button id="toggle" type="button" aria-pressed="false">暂停</button>
+  <label for="speed">速度 <input id="speed" type="range" min="0.4" max="2.2" step="0.1" value="1"></label>
+  <button id="jumpBtn" type="button">跳一下</button>
+  <button id="dayNight" type="button" aria-pressed="false">切到夜晚</button>
+  <button id="rainBtn" type="button" aria-pressed="false">下雨</button>
+  <button id="sound" type="button" aria-pressed="true">声音：开</button>
+</div>
+<div class="chips">
+  <span class="odo" id="odo" aria-live="off">里程 0.00 km</span>
+  <span class="odo" id="score" aria-live="polite">接到鱼 0 条 · 最高 0</span>
+</div>
+<p class="hint"><kbd>↑</kbd> 或点击画面跳起来接鱼、跳过石头；<kbd>空格</kbd> 响铃，<kbd>P</kbd> 暂停，<kbd>N</kbd> 昼夜，<kbd>R</kbd> 下雨</p>
+
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const svg = $("scene");
+  const BB = { x: 440, y: 430 };     // 牙盘中心
+  const HIP = { x: 424, y: 278 };    // 髋关节
+  const CRANK = 32, THIGH = 92, SHIN = 92;
+  const WHEEL_R = 78, GEAR = 2.2, BASE_SPEED = 240; // 地面速度 px/s
+
+  // 生成辐条
+  const NS = "http://www.w3.org/2000/svg";
+  function spokes(g, cx, cy) {
+    for (let i = 0; i < 18; i++) {
+      const a = i / 18 * Math.PI * 2;
+      const l = document.createElementNS(NS, "line");
+      l.setAttribute("x1", cx); l.setAttribute("y1", cy);
+      l.setAttribute("x2", cx + Math.cos(a) * 70); l.setAttribute("y2", cy + Math.sin(a) * 70);
+      g.appendChild(l);
+    }
+  }
+  spokes($("rearSpokes"), 300, 420);
+  spokes($("frontSpokes"), 600, 420);
+
+  // 海面上的小浪花：越靠近岸边越大（透视），x 留出余量避免跨过 900 的接缝
+  {
+    let s = 11;
+    const r = () => (s = (s * 16807) % 2147483647) / 2147483647;
+    for (let i = 0; i < 26; i++) {
+      const y = 312 + r() * 118, k = (y - 300) / 130;
+      const w = 8 + k * 16, x = 10 + r() * (870 - w * 2);
+      const p = document.createElementNS(NS, "path");
+      p.setAttribute("d", `M${x.toFixed(1)} ${y.toFixed(1)} q${(w / 2).toFixed(1)} ${(-w / 3).toFixed(1)} ${w.toFixed(1)} 0`);
+      p.setAttribute("stroke-width", (1.2 + k * 1.6).toFixed(1));
+      $("waveMarks").appendChild(p);
+    }
+  }
+
+  // 两段式 IK：膝盖朝前
+  function knee(hip, foot) {
+    const dx = foot.x - hip.x, dy = foot.y - hip.y;
+    const d = Math.min(Math.hypot(dx, dy), THIGH + SHIN - 0.01);
+    const base = Math.atan2(dy, dx);
+    const off = Math.acos((THIGH * THIGH + d * d - SHIN * SHIN) / (2 * THIGH * d));
+    const a = { x: hip.x + Math.cos(base - off) * THIGH, y: hip.y + Math.sin(base - off) * THIGH };
+    const b = { x: hip.x + Math.cos(base + off) * THIGH, y: hip.y + Math.sin(base + off) * THIGH };
+    return a.x > b.x ? a : b;
+  }
+
+  // 蹼足，脚尖朝前
+  const foot = p =>
+    `M${p.x - 9} ${p.y - 1} L${p.x + 20} ${p.y - 7} L${p.x + 16} ${p.y + 1} L${p.x + 23} ${p.y + 5} L${p.x - 6} ${p.y + 7} Z`;
+
+  function leg(prefix, angle, dx) {
+    const pedal = { x: BB.x + Math.cos(angle) * CRANK, y: BB.y + Math.sin(angle) * CRANK };
+    const hip = { x: HIP.x + dx, y: HIP.y };
+    const k = knee(hip, pedal);
+    $(prefix + "Leg").setAttribute("points", `${hip.x},${hip.y} ${k.x},${k.y} ${pedal.x},${pedal.y}`);
+    $(prefix + "Foot").setAttribute("d", foot(pedal));
+    const c = $(prefix + "Crank");
+    c.setAttribute("x1", BB.x); c.setAttribute("y1", BB.y);
+    c.setAttribute("x2", pedal.x); c.setAttribute("y2", pedal.y);
+  }
+
+  // 视差图层：每层内容宽 900，用 <use> 复制一份实现无缝循环
+  const layers = [
+    ["lClouds", 0.06], ["lFar", 0.1], ["lWaves", 0.22], ["lBeach", 0.6], ["lTrees", 0.6], ["lRoad", 1]
+  ].map(([id, f]) => ({ el: $(id), f }));
+
+  // 星星（固定种子的伪随机，每次位置一致）
+  let seed = 7;
+  const rand = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  for (let i = 0; i < 45; i++) {
+    const s = document.createElementNS(NS, "circle");
+    s.setAttribute("class", "star");
+    s.setAttribute("cx", (rand() * 900).toFixed(1));
+    s.setAttribute("cy", (rand() * 230).toFixed(1));
+    s.setAttribute("r", (0.8 + rand() * 1.6).toFixed(1));
+    s.style.animationDelay = `${(-rand() * 2.4).toFixed(2)}s`;
+    $("stars").appendChild(s);
+  }
+
+  // 尘土粒子池
+  const dust = Array.from({ length: 28 }, () => {
+    const c = document.createElementNS(NS, "circle");
+    c.setAttribute("r", 0);
+    $("dust").appendChild(c);
+    return { el: c, life: 0, x: 0, y: 0, vx: 0, vy: 0, r: 0 };
+  });
+  let dustAcc = 0;
+  function updateDust(dt) {
+    dustAcc = jumpY > 4 ? 0 : dustAcc + dt * 16 * speed; // 腾空时不扬尘
+    while (dustAcc >= 1) {
+      dustAcc -= 1;
+      const p = dust.find(d => d.life <= 0);
+      if (!p) break;
+      Object.assign(p, {
+        life: 1, x: 268 + Math.random() * 14, y: 496 + Math.random() * 5,
+        vx: -BASE_SPEED * speed * (0.35 + Math.random() * 0.3), vy: -12 - Math.random() * 18, r: 2 + Math.random() * 3
+      });
+    }
+    for (const p of dust) {
+      if (p.life <= 0) continue;
+      p.life -= dt * 1.4;
+      p.x += p.vx * dt; p.y += p.vy * dt;
+      const k = Math.max(p.life, 0);
+      p.el.setAttribute("cx", p.x.toFixed(1));
+      p.el.setAttribute("cy", p.y.toFixed(1));
+      p.el.setAttribute("r", (p.r * (1.8 - k)).toFixed(1));
+      p.el.setAttribute("opacity", (k * 0.45).toFixed(2));
+    }
+  }
+
+  // 飞鸟
+  const birds = [...document.querySelectorAll(".birdPos")].map((el, i) => ({ el, off: i * 38, y: 150 + i * 16 }));
+
+  // 石头：世界坐标，车轮压过时抬起对应一侧
+  let rockWorld = 1100;
+  const bumpAt = (rx, wheelX) => {
+    const d = Math.abs(rx - wheelX);
+    return d < 20 ? 9 * (1 - (d / 20) ** 2) : 0;
+  };
+  let frontHit = false, cleared = false;
+
+  // 环境：昼夜 + 雨天，两者都用 0~1 的值平滑过渡
+  let night = 0, nightTarget = 0, rain = 0, rainTarget = 0;
+  const op = (id, v) => $(id).setAttribute("opacity", v.toFixed(3));
+  function applyEnv() {
+    const n = night, r = rain;
+    op("nightSky", n);
+    op("stars", n * (1 - r));
+    op("moon", n * (1 - r * 0.85));
+    op("sun", (1 - n) * (1 - r * 0.85));
+    op("lClouds", (1 - n * 0.7) * (1 - r));
+    op("lStorm", r * (1 - n * 0.4));
+    op("landShade", n * 0.6);
+    op("rainShade", r * 0.3 * (1 - n * 0.5));
+    op("wet", r * 0.22);
+    op("beam", Math.max(n, r * 0.55));
+    op("lamp", Math.max(n, r * 0.6));
+    op("glint", (1 - r * 0.9) * (1 - n * 0.4));
+    op("rain", r);
+    const b = 1 - n * 0.3 - r * 0.12;
+    $("riderWrap").style.filter = b < 0.995 ? `brightness(${b.toFixed(3)})` : "";
+    for (const bd of birds) bd.el.setAttribute("opacity", ((1 - n) * (1 - r)).toFixed(3));
+  }
+  const approach = (v, target, dt) => v + Math.sign(target - v) * Math.min(dt / 1.5, Math.abs(target - v));
+
+  // ---------- 音效（Web Audio 合成，首次用户操作时创建） ----------
+  let soundOn = true, actx = null, noiseBuf = null, rainGain = null;
+  function audio() {
+    try {
+      actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+      if (actx.state === "suspended") actx.resume();
+      return actx;
+    } catch (_) { return null; }
+  }
+  function tone(type, f0, f1, dur, gain, delay = 0) {
+    const ctx = soundOn && audio();
+    if (!ctx) return;
+    const at = ctx.currentTime + 0.01 + delay;
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = type;
+    o.frequency.setValueAtTime(f0, at);
+    o.frequency.exponentialRampToValueAtTime(f1, at + dur);
+    g.gain.setValueAtTime(0, at);
+    g.gain.linearRampToValueAtTime(gain, at + 0.005);
+    g.gain.exponentialRampToValueAtTime(0.0001, at + dur);
+    o.connect(g).connect(ctx.destination);
+    o.start(at); o.stop(at + dur + 0.02);
+  }
+  function noise(ctx) {
+    if (!noiseBuf) {
+      noiseBuf = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
+      const d = noiseBuf.getChannelData(0);
+      for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    }
+    const src = ctx.createBufferSource();
+    src.buffer = noiseBuf;
+    return src;
+  }
+  function thunder(delay) {
+    const ctx = soundOn && actx;
+    if (!ctx) return;
+    const at = ctx.currentTime + delay;
+    const src = noise(ctx), f = ctx.createBiquadFilter(), g = ctx.createGain();
+    f.type = "lowpass"; f.frequency.value = 260;
+    g.gain.setValueAtTime(0, at);
+    g.gain.linearRampToValueAtTime(0.7, at + 0.08);
+    g.gain.exponentialRampToValueAtTime(0.001, at + 2.6);
+    src.connect(f).connect(g).connect(ctx.destination);
+    src.start(at); src.stop(at + 2.7);
+  }
+  function ensureRainSound() {
+    const ctx = rainGain ? null : audio();
+    if (!ctx) return;
+    const src = noise(ctx), f = ctx.createBiquadFilter();
+    src.loop = true;
+    f.type = "bandpass"; f.frequency.value = 1600; f.Q.value = 0.5;
+    rainGain = ctx.createGain();
+    rainGain.gain.value = 0;
+    src.connect(f).connect(rainGain).connect(ctx.destination);
+    src.start();
+  }
+
+  // ---------- 跳跃 ----------
+  const G = 1500, JUMP_V = 540;
+  let jumpY = 0, jumpV = 0;
+  function jump() {
+    if (!running || jumpY > 0) return;
+    jumpV = JUMP_V;
+    tone("triangle", 320, 760, 0.16, 0.07);
+  }
+
+  // ---------- 空中的鱼 ----------
+  const treatsG = $("treats");
+  const COLORS = ["#6fb3d9", "#f28c6b", "#9b8ce0", "#5fc2a6"];
+  const treats = [];
+  let nextTreat = 350;
+  let score = 0, best = 0;
+  try { best = parseInt(localStorage.getItem("pelican-best"), 10) || 0; } catch (_) {}
+  const scoreEl = $("score");
+  const showScore = () => { scoreEl.textContent = `接到鱼 ${score} 条 · 最高 ${best}`; };
+  showScore();
+  function spawnTreat() {
+    const gold = Math.random() < 0.12;
+    const el = document.createElementNS(NS, "use");
+    el.setAttribute("href", "#fishT");
+    el.setAttribute("fill", gold ? "#f5c542" : COLORS[Math.floor(Math.random() * COLORS.length)]);
+    treatsG.appendChild(el);
+    treats.push({ el, wx: dist + 960, y: 62 + Math.random() * 60, ph: Math.random() * 6.28, gold });
+  }
+  const plus = { life: 0, x: 0, y: 0 };
+  const plusEl = $("plusOne");
+  const cheers = ["好吃！", "接住啦~", "美味~", "再来一条！"];
+  function catchTreat(t, x, y) {
+    const pts = t.gold ? 3 : 1;
+    score += pts;
+    if (score > best) {
+      best = score;
+      try { localStorage.setItem("pelican-best", String(best)); } catch (_) {}
+    }
+    showScore();
+    Object.assign(plus, { life: 1, x, y });
+    plusEl.textContent = `+${pts}`;
+    const pouch = $("pouch");
+    pouch.classList.remove("gulp");
+    void pouch.getBoundingClientRect();
+    pouch.classList.add("gulp");
+    tone("sine", 620, 240, 0.14, 0.12);
+    if (t.gold) { tone("sine", 1320, 1320, 0.25, 0.06, 0.08); tone("sine", 1760, 1760, 0.3, 0.05, 0.16); }
+    say(t.gold ? "金色的鱼！" : cheers[Math.floor(Math.random() * cheers.length)]);
+  }
+
+  // ---------- 雨滴与水花 ----------
+  const drops = Array.from({ length: 110 }, () => {
+    const l = document.createElementNS(NS, "line");
+    $("rain").appendChild(l);
+    return { el: l, x: Math.random() * 1100, y: Math.random() * 560, v: 650 + Math.random() * 250,
+             len: 12 + Math.random() * 10, gy: 500 + Math.random() * 56 };
+  });
+  const splashes = Array.from({ length: 24 }, () => {
+    const e = document.createElementNS(NS, "ellipse");
+    e.setAttribute("rx", 0); e.setAttribute("ry", 0);
+    $("splashes").appendChild(e);
+    return { el: e, life: 0, x: 0, y: 0 };
+  });
+  function updateRain(dt) {
+    const vx = -(120 + BASE_SPEED * speed * 0.6);
+    for (const d of drops) {
+      const k = d.v / 700;
+      d.x += vx * k * dt;
+      d.y += d.v * dt;
+      if (d.y > d.gy) {
+        const s = Math.random() < 0.35 && splashes.find(p => p.life <= 0);
+        if (s) Object.assign(s, { life: 1, x: d.x, y: d.gy });
+        d.y = -20 - Math.random() * 80;
+        d.x = Math.random() * 1150;
+      }
+      d.el.setAttribute("x1", d.x.toFixed(1)); d.el.setAttribute("y1", d.y.toFixed(1));
+      d.el.setAttribute("x2", (d.x - vx * k / d.v * d.len).toFixed(1)); d.el.setAttribute("y2", (d.y - d.len).toFixed(1));
+    }
+    for (const s of splashes) {
+      if (s.life <= 0) continue;
+      s.life -= dt / 0.3;
+      const k = Math.max(s.life, 0), rx = 1 + (1 - k) * 7;
+      s.el.setAttribute("cx", s.x.toFixed(1)); s.el.setAttribute("cy", s.y.toFixed(1));
+      s.el.setAttribute("rx", rx.toFixed(1)); s.el.setAttribute("ry", (rx * 0.35).toFixed(1));
+      s.el.setAttribute("opacity", (k * rain).toFixed(2));
+    }
+  }
+
+  // ---------- 闪电 ----------
+  let lightTimer = 4, flash = 0;
+  const bolt = $("bolt");
+  function strike() {
+    let x = 80 + Math.random() * 740, y = 40;
+    let d = `M${x.toFixed(0)} ${y}`;
+    while (y < 250) {
+      x += (Math.random() - 0.5) * 50; y += 18 + Math.random() * 22;
+      d += ` L${x.toFixed(0)} ${y.toFixed(0)}`;
+    }
+    bolt.setAttribute("d", d);
+    flash = 1;
+    thunder(0.3 + Math.random() * 0.5);
+    if (Math.random() < 0.5) say("哇，打雷了！");
+  }
+
+  // 里程：设定 1px ≈ 2cm
+  const odo = $("odo");
+  let odoTimer = 0;
+
+  let running = !matchMedia("(prefers-reduced-motion: reduce)").matches;
+  let speed = 1, dist = 0, time = 0, last = performance.now();
+
+  function frame(now) {
+    const dt = Math.min(now - last, 50) / 1000;
+    last = now;
+    if (running) { dist += BASE_SPEED * speed * dt; time += dt; updateDust(dt); }
+
+    // 昼夜 / 雨天平滑过渡
+    if (night !== nightTarget || rain !== rainTarget) {
+      night = approach(night, nightTarget, dt);
+      rain = approach(rain, rainTarget, dt);
+      applyEnv();
+    }
+
+    if (running) {
+      // 跳跃物理
+      if (jumpY > 0 || jumpV > 0) {
+        jumpV -= G * dt;
+        jumpY += jumpV * dt;
+        if (jumpY <= 0) { jumpY = 0; jumpV = 0; tone("sine", 140, 70, 0.12, 0.12); }
+      }
+      // 雨
+      if (rain > 0.01) updateRain(dt);
+      if (rain > 0.8) {
+        lightTimer -= dt;
+        if (lightTimer <= 0) { strike(); lightTimer = 5 + Math.random() * 7; }
+      }
+      // 生成空中的鱼
+      if (dist >= nextTreat) { spawnTreat(); nextTreat = dist + 420 + Math.random() * 520; }
+    }
+    if (rainGain) rainGain.gain.value = soundOn && running ? rain * 0.07 : 0;
+    if (flash > 0) {
+      flash = Math.max(0, flash - dt * 2.5);
+      op("flash", flash * flash * 0.6);
+      op("bolt", flash > 0.6 ? 1 : flash / 0.6);
+    }
+
+    // 石头与颠簸（跳起来时不会颠）
+    let rx = rockWorld - dist;
+    if (rx < -60) { rockWorld = dist + 1000 + Math.random() * 1200; rx = rockWorld - dist; cleared = false; }
+    $("rock").setAttribute("transform", `translate(${rx.toFixed(1)} 0)`);
+    const air = jumpY > 8;
+    const hf = air ? 0 : bumpAt(rx, 600), hr = air ? 0 : bumpAt(rx, 300);
+    const tilt = Math.atan2(hr - hf, 300) * 180 / Math.PI - Math.max(-6, Math.min(6, jumpV / 90));
+    const lift = (hf + hr) / 2 + jumpY;
+    const bump = `translate(0 ${(-lift).toFixed(2)}) rotate(${tilt.toFixed(2)} 450 420)`;
+    $("riderWrap").setAttribute("transform", bump);
+    $("beam").setAttribute("transform", bump);
+    if (hf > 5 && !frontHit) { frontHit = true; say("哎哟~ 颠"); }
+    if (hf === 0) frontHit = false;
+    if (air && Math.abs(rx - 450) < 20 && !cleared) { cleared = true; say("跳过去啦！"); }
+
+    // 影子随跳跃高度缩小变淡
+    const sk = 1 - Math.min(jumpY / 180, 0.45);
+    const sh = $("shadow");
+    sh.setAttribute("rx", (240 * sk).toFixed(1));
+    sh.setAttribute("opacity", (0.22 * sk).toFixed(3));
+
+    // 空中的鱼：随世界后退，嘴部区域碰到就吃掉
+    for (let i = treats.length - 1; i >= 0; i--) {
+      const t = treats[i];
+      const x = t.wx - dist;
+      const y = t.y + Math.sin(time * 3 + t.ph) * 6;
+      const hit = x > 565 && x < 705 && y > 128 - lift && y < 215 - lift;
+      if (hit || x < -60) {
+        if (hit) catchTreat(t, x, y);
+        t.el.remove();
+        treats.splice(i, 1);
+        continue;
+      }
+      t.el.setAttribute("transform", `translate(${x.toFixed(1)} ${y.toFixed(1)}) rotate(${(Math.sin(time * 4 + t.ph) * 8).toFixed(1)})`);
+    }
+    if (plus.life > 0) {
+      plus.life -= dt * 1.2;
+      plusEl.setAttribute("x", plus.x.toFixed(1));
+      plusEl.setAttribute("y", (plus.y - (1 - plus.life) * 40).toFixed(1));
+      op("plusOne", Math.max(plus.life, 0));
+    }
+
+    // 飞鸟从左向右慢慢飞过
+    for (const b of birds) {
+      const x = ((time * 45 + b.off) % 1300) - 200;
+      b.el.setAttribute("transform", `translate(${x.toFixed(1)} ${(b.y + Math.sin(time * 1.5 + b.off) * 6).toFixed(1)})`);
+    }
+
+    odoTimer -= dt;
+    if (odoTimer <= 0) {
+      odoTimer = 0.2;
+      const kmh = running ? BASE_SPEED * speed * 0.02 * 3.6 : 0;
+      odo.textContent = `里程 ${(dist * 0.02 / 1000).toFixed(2)} km · ${kmh.toFixed(0)} km/h`;
+    }
+
+    const wheel = dist / WHEEL_R;          // 车轮角度（弧度）
+    const crank = wheel / GEAR;            // 曲柄角度
+    const deg = wheel * 180 / Math.PI;
+
+    $("rearSpokes").setAttribute("transform", `rotate(${deg} 300 420)`);
+    $("frontSpokes").setAttribute("transform", `rotate(${deg} 600 420)`);
+    $("chainring").setAttribute("transform", `rotate(${crank * 180 / Math.PI} 440 430)`);
+    $("chain").setAttribute("stroke-dashoffset", -crank * 21);
+
+    leg("far", crank + Math.PI, -6);
+    leg("near", crank, 0);
+
+    // 头部随蹬踏轻轻点动，整车随路面微微颠簸
+    const nod = Math.sin(crank * 2) * 2.5;
+    $("head").setAttribute("transform", `rotate(${nod} 470 235)`);
+    $("pelican").setAttribute("transform", `translate(0 ${Math.abs(Math.sin(crank)) * 1.5})`);
+    $("rider").setAttribute("transform", `translate(0 ${Math.sin(time * 23) * 0.6 * speed})`);
+    $("fish").setAttribute("transform", `rotate(${Math.sin(time * 9) * 4} 312 312)`);
+
+    for (const { el, f } of layers) {
+      el.setAttribute("transform", `translate(${-((dist * f) % 900)} 0)`);
+    }
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+
+  const btn = $("toggle");
+  const sync = () => {
+    btn.textContent = running ? "暂停" : "继续";
+    btn.setAttribute("aria-pressed", String(!running));
+    svg.classList.toggle("paused", !running);
+  };
+  const togglePause = () => { running = !running; sync(); };
+  btn.addEventListener("click", togglePause);
+  $("speed").addEventListener("input", e => {
+    speed = parseFloat(e.target.value);
+    svg.style.setProperty("--spd", speed);
+  });
+  sync();
+
+  // 昼夜切换
+  const dn = $("dayNight");
+  const toggleNight = () => {
+    nightTarget = nightTarget ? 0 : 1;
+    dn.textContent = nightTarget ? "切到白天" : "切到夜晚";
+    dn.setAttribute("aria-pressed", String(!!nightTarget));
+  };
+  dn.addEventListener("click", toggleNight);
+
+  // 对话气泡
+  const bubble = $("bubble"), bubbleText = $("bubbleText");
+  let bubbleTimer;
+  function say(text) {
+    bubbleText.textContent = text;
+    bubble.classList.add("show");
+    clearTimeout(bubbleTimer);
+    bubbleTimer = setTimeout(() => bubble.classList.remove("show"), 1400);
+  }
+
+  const soundBtn = $("sound");
+  soundBtn.addEventListener("click", () => {
+    soundOn = !soundOn;
+    soundBtn.textContent = `声音：${soundOn ? "开" : "关"}`;
+    soundBtn.setAttribute("aria-pressed", String(soundOn));
+  });
+
+  // 雨天切换
+  const rainBtn = $("rainBtn");
+  const toggleRain = () => {
+    rainTarget = rainTarget ? 0 : 1;
+    rainBtn.textContent = rainTarget ? "放晴" : "下雨";
+    rainBtn.setAttribute("aria-pressed", String(!!rainTarget));
+    if (rainTarget) { ensureRainSound(); lightTimer = 3; say("下雨啦，冲呀~"); }
+  };
+  rainBtn.addEventListener("click", toggleRain);
+
+  // 跳跃：按钮、点击画面、↑ 键
+  $("jumpBtn").addEventListener("click", jump);
+  svg.addEventListener("pointerdown", e => {
+    if (e.target.closest("#bell")) return;
+    jump();
+  });
+
+  function ding(at) {
+    for (const [freq, gain] of [[2637, 0.18], [3951, 0.08], [5274, 0.04]]) {
+      const o = actx.createOscillator(), g = actx.createGain();
+      o.type = "sine"; o.frequency.value = freq;
+      g.gain.setValueAtTime(0, at);
+      g.gain.linearRampToValueAtTime(gain, at + 0.005);
+      g.gain.exponentialRampToValueAtTime(0.0001, at + 0.6);
+      o.connect(g).connect(actx.destination);
+      o.start(at); o.stop(at + 0.65);
+    }
+  }
+  const lines = ["叮铃铃~", "让一让~", "去钓鱼咯！", "风好舒服~"];
+  let lineIdx = 0;
+  const bell = $("bell");
+  function ringBell() {
+    bell.classList.remove("ring");
+    void bell.getBoundingClientRect(); // 重新触发 CSS 动画
+    bell.classList.add("ring");
+    say(nightTarget ? "晚上好~" : lines[lineIdx++ % lines.length]);
+    if (!soundOn || !audio()) return;
+    const t0 = actx.currentTime + 0.01;
+    ding(t0); ding(t0 + 0.18);
+  }
+  bell.addEventListener("click", ringBell);
+  bell.addEventListener("keydown", e => {
+    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); ringBell(); }
+  });
+
+  // 快捷键（焦点在按钮或输入框上时不拦截空格）
+  document.addEventListener("keydown", e => {
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    const tag = e.target.tagName;
+    const k = e.key.toLowerCase();
+    if (k === " " && tag !== "BUTTON" && tag !== "INPUT") { e.preventDefault(); ringBell(); }
+    else if ((k === "arrowup" || k === "w") && tag !== "INPUT") { e.preventDefault(); jump(); }
+    else if (k === "p") togglePause();
+    else if (k === "n") toggleNight();
+    else if (k === "r") toggleRain();
+  });
+})();
+</script>
+</body>
+</html>
